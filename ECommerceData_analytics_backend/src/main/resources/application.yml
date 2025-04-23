@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: ECommerceData_analytics_backend
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  # hive 配置
+  datasource:
+    hive:
+      url: jdbc:hive2://master:10000/ecommerce
+      username: hive
+      password:
+      driver-class-name: org.apache.hive.jdbc.HiveDriver
+
+# hadoop 配置
+hadoop:
+  hdfs:
+    uri: hdfs://master:8020
+  user:
+    name: root
+
+knife4j:
+  enable: true
+  openapi:
+    title: "接口文档"
+    version: 1.0
+    group:
+      default:
+        api-rule: package
+        api-rule-resources:
+          - com.example.ecommercedata_analytics_backend.controller
