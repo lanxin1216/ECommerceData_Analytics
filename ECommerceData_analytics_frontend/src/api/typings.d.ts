@@ -23,11 +23,6 @@ declare namespace API {
     message?: string
   }
 
-  type getOrdersByMonthUsingGETParams = {
-    /** month */
-    month: string
-  }
-
   type getOrderTrendUsingGETParams = {
     /** type */
     type: string
