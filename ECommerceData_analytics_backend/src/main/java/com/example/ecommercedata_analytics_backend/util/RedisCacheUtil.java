@@ -25,7 +25,7 @@ public class RedisCacheUtil {
     }
 
     private Duration getRandomTTL() {
-        int seconds = ThreadLocalRandom.current().nextInt(30 * 60, 40 * 60); // 1800 ~ 2400 秒
+        int seconds = ThreadLocalRandom.current().nextInt(3 * 3600, 4 * 3600);
         return Duration.ofSeconds(seconds);
     }
 
