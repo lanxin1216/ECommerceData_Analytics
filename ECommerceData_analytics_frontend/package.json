@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "openapi": "node openapi.config.js",
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
@@ -13,6 +14,7 @@
   },
   "dependencies": {
     "ant-design-vue": "^4.2.6",
+    "echarts": "^5.6.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
