@@ -74,11 +74,29 @@ SET hive.exec.dynamic.partition = true;
 SET hive.exec.dynamic.partition.mode = nonstrict;
 
 -- 将临时表数据插入分区表 orders
-INSERT INTO TABLE ecommerce.orders PARTITION(order_month)
-SELECT order_id, user_id, order_time, category, sub_category, product_name,
-       unit_price, quantity, total_amount, delivery_province, delivery_city,
-       gender, age, is_member, order_month
+INSERT INTO TABLE ecommerce.orders PARTITION (order_month)
+SELECT order_id,
+       user_id,
+       order_time,
+       category,
+       sub_category,
+       product_name,
+       unit_price,
+       quantity,
+       total_amount,
+       delivery_province,
+       delivery_city,
+       gender,
+       age,
+       is_member,
+       order_month
 FROM ecommerce.temp_orders;
 
 -- 修复分区表 orders
 MSCK REPAIR TABLE ecommerce.orders;
+
+-- OrderSalesAnalysisDaoImpl
+SELECT category, SUM(total_amount) AS sales
+FROM orders
+GROUP BY category
+LIMIT 10;
