@@ -34,3 +34,5 @@ hive安装目录：/opt/module/hive-3.1.2
 	hdfs dfs -chmod 777 /ecommerce/adidas/orders
 	hdfs dfs -chmod 777 /ecommerce/adidas/temp_orders
 	hdfs dfs -chmod 777 /ecommerce/adidas/users
+--------------------------------------
+HADOOP_HOME 
