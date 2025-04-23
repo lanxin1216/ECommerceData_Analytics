@@ -12,6 +12,10 @@ spring:
       username: hive
       password:
       driver-class-name: org.apache.hive.jdbc.HiveDriver
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 0
 
 # hadoop 配置
 hadoop:

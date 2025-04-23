@@ -2,6 +2,7 @@ package com.example.ecommercedata_analytics_backend.service.impl;
 
 import com.example.ecommercedata_analytics_backend.dao.ProductPurchaseAnalysisDao;
 import com.example.ecommercedata_analytics_backend.service.ProductPurchaseAnalysisService;
+import com.example.ecommercedata_analytics_backend.util.RedisCacheUtil;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -13,8 +14,18 @@ public class ProductPurchaseAnalysisServiceImpl implements ProductPurchaseAnalys
     @Resource
     private ProductPurchaseAnalysisDao productPurchaseAnalysisDao;
 
+    @Resource
+    private RedisCacheUtil redisCacheUtil;
+
     @Override
     public Map<String, Object> getMonthlyARPUTrend() {
+        // 加载缓存
+        String cacheKey = "arpu_trend";
+        Map<String, Object> cached = redisCacheUtil.getMap(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         List<Map<String, Object>> list = productPurchaseAnalysisDao.getMonthlyARPUTrend();
 
         List<String> xAxis = new ArrayList<>();
@@ -36,11 +47,21 @@ public class ProductPurchaseAnalysisServiceImpl implements ProductPurchaseAnalys
         Map<String, Object> result = new HashMap<>();
         result.put("xAxis", xAxis);
         result.put("series", series);
+
+        // 存入缓存
+        redisCacheUtil.setCache(cacheKey, result);
         return result;
     }
 
     @Override
     public Map<String, Object> getTopSellingProducts() {
+        // 加载缓存
+        String cacheKey = "top_selling_products";
+        Map<String, Object> cached = redisCacheUtil.getMap(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         List<Map<String, Object>> list = productPurchaseAnalysisDao.getTopSellingProducts();
 
         List<String> productNames = new ArrayList<>();
@@ -62,6 +83,8 @@ public class ProductPurchaseAnalysisServiceImpl implements ProductPurchaseAnalys
         Map<String, Object> result = new HashMap<>();
         result.put("xAxis", productNames);
         result.put("series", series);
+        // 存入缓存
+        redisCacheUtil.setCache(cacheKey, result);
         return result;
     }
 }
