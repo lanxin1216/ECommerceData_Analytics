@@ -8,46 +8,78 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-// import { getGenderDistribution } from '@/api/userBehaviorFeatureController'
-import { mockMemberData } from '@/mock/userBehaviorFeatureMock'
+import { message } from 'ant-design-vue'
+import { getMembershipRatioUsingGet } from '@/api/userBehaviorFeatureAnalysisController.ts'
 
 const chartRef = ref<HTMLDivElement | null>(null)
 const loading = ref(false)
 const isEmpty = ref(false)
+let chartInstance: echarts.ECharts | null = null
 
 const renderChart = (data: any[]) => {
-  const chart = echarts.init(chartRef.value!)
-  chart.setOption({
+  if (!chartRef.value) return
+
+  // 防止重复初始化
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+
+  chartInstance = echarts.init(chartRef.value)
+  chartInstance.setOption({
     tooltip: { trigger: 'item' },
     series: [
       {
         type: 'pie',
         radius: '60%',
-        data: data.map(item => ({ name: item.type, value: item.count })),
+        data,
         label: { formatter: '{b}: {d}%' }
       }
     ]
   })
+
+  setTimeout(() => {
+    chartInstance?.resize();
+  }, 0);
 }
 
 const fetchData = async () => {
   loading.value = true
-  // const res = await getGenderDistribution()
-  // const data = res.data
-  const data = mockMemberData
-  isEmpty.value = data.length === 0
-  if (!isEmpty.value) renderChart(data)
-  loading.value = false
+  try {
+    const res = await getMembershipRatioUsingGet()
+    if (res.data.code === 0 && Array.isArray(res.data.data)) {
+      isEmpty.value = res.data.data.length === 0
+      if (!isEmpty.value) {
+        await nextTick()
+        renderChart(res.data.data)
+      }
+    } else {
+      isEmpty.value = true
+      console.error('返回格式错误或 code 非 0', res)
+      message.error(res.data.message || '请求失败或数据格式错误')
+    }
+  } catch (error) {
+    isEmpty.value = true
+    message.error('请求异常')
+    console.error('请求异常:', error)
+  } finally {
+    loading.value = false
+  }
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  window.addEventListener('resize', () => {
+    chartInstance?.resize()
+  })
+})
 </script>
 
 <style scoped>
 .chart {
   height: 400px;
   width: 100%;
+  min-height: 300px;
 }
 </style>

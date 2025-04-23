@@ -19,45 +19,57 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-// import { getOrderTrendUsingGet } from '@/api/sales'
-import { mockOrderTrend } from '@/mock/salesAnalysisMock.ts'
+import { message } from 'ant-design-vue'
+import { getOrderTrendUsingGet } from '@/api/orderSalesAnalysisController.ts'
 
 const chartRef = ref<HTMLDivElement | null>(null)
-let chart: echarts.ECharts
 const loading = ref(false)
 const isEmpty = ref(false)
-
-// 趋势类型：'day' | 'month'
 const trendType = ref<'day' | 'month'>('day')
-
-const fetchData = async () => {
-  loading.value = true
-
-  // 请求后端接口（用 mock 替代）
-  // const res = await getOrderTrendUsingGet({ type: trendType.value })
-  const res = mockOrderTrend
-
-  if (res.data.xAxis?.length === 0) isEmpty.value = true
-  else renderChart(res.data)
-
-  loading.value = false
-}
+let chartInstance: echarts.ECharts | null = null
 
 const renderChart = (data: any) => {
-  chart.setOption({
+  if (!chartRef.value) return
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartRef.value)
+
+  chartInstance.setOption({
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: data.xAxis },
     yAxis: { type: 'value' },
-    series: data.series,
+    series: data.series
   })
-  isEmpty.value = false
+
+  setTimeout(() => chartInstance?.resize(), 100)
+}
+
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const res = await getOrderTrendUsingGet({ type: trendType.value })
+    const data = res.data.data?.[0]
+    if (res.data.code === 0 && data && data.xAxis?.length > 0) {
+      isEmpty.value = false
+      await nextTick()
+      renderChart(data)
+    } else {
+      isEmpty.value = true
+      message.warning('暂无订单趋势数据')
+    }
+  } catch (err) {
+    isEmpty.value = true
+    message.error('加载失败，请稍后重试')
+    console.error('订单趋势加载失败:', err)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
-  if (chartRef.value) chart = echarts.init(chartRef.value)
   fetchData()
+  window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>
 

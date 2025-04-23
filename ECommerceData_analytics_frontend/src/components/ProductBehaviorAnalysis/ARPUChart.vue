@@ -10,38 +10,68 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-// import { getARPUTrendUsingGet } from '@/api/productPurchaseAnalysisController'
-import { mockARPUTrend } from '@/mock/productPurchaseMock.ts'
+import { message } from 'ant-design-vue'
+import { getArpuTrendUsingGet } from '@/api/productPurchaseAnalysisController.ts'
 
 const chartRef = ref<HTMLDivElement | null>(null)
-let chart: echarts.ECharts
 const loading = ref(false)
 const isEmpty = ref(false)
+let chartInstance: echarts.ECharts | null = null
+
+const renderChart = (data: any) => {
+  if (!chartRef.value) return
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartRef.value)
+
+  chartInstance.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const item = params[0]
+        return `${item.axisValue}<br/>${item.seriesName}: ¥${item.data}`
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: data.xAxis,
+      axisLabel: { rotate: 30 }
+    },
+    yAxis: {
+      type: 'value',
+      name: '元'
+    },
+    series: data.series
+  })
+
+  setTimeout(() => chartInstance?.resize(), 100)
+}
 
 const fetchData = async () => {
   loading.value = true
-  // const res = await getARPUTrendUsingGet()
-  const res = { data: mockARPUTrend }
-  if (res.data.xAxis?.length === 0) isEmpty.value = true
-  else renderChart(res.data)
-  loading.value = false
-}
-
-const renderChart = (data: any) => {
-  chart.setOption({
-    tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: data.xAxis },
-    yAxis: { type: 'value', name: '元' },
-    series: data.series
-  })
-  isEmpty.value = false
+  try {
+    const res = await getArpuTrendUsingGet()
+    if (res.data.code === 0 && res.data.data?.xAxis?.length > 0) {
+      isEmpty.value = false
+      await nextTick()
+      renderChart(res.data.data)
+    } else {
+      isEmpty.value = true
+      message.warning('暂无 ARPU 数据')
+    }
+  } catch (err) {
+    isEmpty.value = true
+    message.error('加载失败，请稍后重试')
+    console.error('ARPU 数据加载失败:', err)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
-  if (chartRef.value) chart = echarts.init(chartRef.value)
   fetchData()
+  window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>
 

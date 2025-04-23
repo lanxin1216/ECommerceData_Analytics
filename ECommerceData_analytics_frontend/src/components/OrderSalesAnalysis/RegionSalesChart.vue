@@ -10,37 +10,63 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { mockRegionSales } from '@/mock/salesAnalysisMock.ts'
+import { message } from 'ant-design-vue'
+import { getRegionSalesUsingGet } from '@/api/orderSalesAnalysisController.ts'
 
 const chartRef = ref<HTMLDivElement | null>(null)
-let chart: echarts.ECharts
 const loading = ref(false)
 const isEmpty = ref(false)
-
-const fetchData = async () => {
-  loading.value = true
-  // const res = await getRegionSalesUsingGet()
-  const res = { data: mockRegionSales }
-  if (res.data.xAxis?.length === 0) isEmpty.value = true
-  else renderChart(res.data)
-  loading.value = false
-}
+let chartInstance: echarts.ECharts | null = null
 
 const renderChart = (data: any) => {
-  chart.setOption({
+  if (!chartRef.value) return
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartRef.value)
+
+  chartInstance.setOption({
     tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: data.xAxis },
+    xAxis: {
+      type: 'category',
+      data: data.xAxis,
+      axisLabel: {
+        rotate: 45, // 避免城市名重叠
+        interval: 0
+      }
+    },
     yAxis: { type: 'value' },
     series: data.series
   })
-  isEmpty.value = false
+
+  setTimeout(() => chartInstance?.resize(), 100)
+}
+
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const res = await getRegionSalesUsingGet()
+    const data = res.data.data?.[0]
+    if (res.data.code === 0 && data && data.xAxis?.length > 0) {
+      isEmpty.value = false
+      await nextTick()
+      renderChart(data)
+    } else {
+      isEmpty.value = true
+      message.warning('暂无省市销售额数据')
+    }
+  } catch (err) {
+    isEmpty.value = true
+    message.error('加载失败，请稍后重试')
+    console.error('省市销售额加载失败:', err)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
-  if (chartRef.value) chart = echarts.init(chartRef.value)
   fetchData()
+  window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>
 

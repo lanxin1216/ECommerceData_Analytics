@@ -14,21 +14,22 @@
         :columns="userColumns"
         :data-source="userData"
         :pagination="userPagination"
-        row-key="user_id"
+        row-key="users.user_id"
         @change="handleUserPageChange"
         :loading="userLoading"
+        :scroll="{ x: 'max-content', y: 400 }"
+        bordered
       />
     </a-card>
-    <div style="margin-top: 10px" />
-    <!-- 订单数据查询 -->
-    <!-- 订单数据表格 -->
-    <a-card title="阿迪达斯订单数据">
+
+    <a-card title="阿迪达斯订单数据" style="margin-top: 10px">
       <a-table
         :columns="orderColumns"
         :data-source="orderData"
-        row-key="order_id"
+        row-key="orders.order_id"
         :loading="orderLoading"
-        scroll="{ x: true }"
+        :scroll="{ x: 'max-content', y: 400 }"
+        bordered
       />
     </a-card>
 
@@ -38,51 +39,49 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
+import { getOrderSampleUsingGet, getUsersUsingGet } from '@/api/getDataSetController.ts'
 
 const userColumns = [
-  { title: '用户ID', dataIndex: 'user_id' },
-  { title: '性别', dataIndex: 'gender' },
-  { title: '年龄', dataIndex: 'age' },
-  { title: '是否会员', dataIndex: 'is_member' },
-  { title: '省份', dataIndex: 'province' },
-  { title: '城市', dataIndex: 'city' }
+  { title: '用户ID', dataIndex: 'users.user_id', key: 'user_id' },
+  { title: '性别', dataIndex: 'users.gender' },
+  { title: '年龄', dataIndex: 'users.age' },
+  { title: '是否会员', dataIndex: 'users.is_member' },
+  { title: '省份', dataIndex: 'users.province' },
+  { title: '城市', dataIndex: 'users.city' }
 ]
 
 const orderColumns = [
-  { title: '订单ID', dataIndex: 'order_id' },
-  { title: '用户ID', dataIndex: 'user_id' },
-  { title: '商品名称', dataIndex: 'product_name' },
-  { title: '单价', dataIndex: 'unit_price' },
-  { title: '数量', dataIndex: 'quantity' },
-  { title: '订单总额', dataIndex: 'total_amount' },
-  { title: '下单时间', dataIndex: 'order_time' },
-  { title: '省份', dataIndex: 'delivery_province' },
-  { title: '城市', dataIndex: 'delivery_city' }
+  { title: '订单ID', dataIndex: 'orders.order_id' },
+  { title: '用户ID', dataIndex: 'orders.user_id' },
+  { title: '下单时间', dataIndex: 'orders.order_time' },
+  { title: '品类', dataIndex: 'orders.category' },
+  { title: '子品类', dataIndex: 'orders.sub_category' },
+  { title: '商品名称', dataIndex: 'orders.product_name' },
+  { title: '单价', dataIndex: 'orders.unit_price' },
+  { title: '数量', dataIndex: 'orders.quantity' },
+  { title: '订单总额', dataIndex: 'orders.total_amount' },
+  { title: '省份', dataIndex: 'orders.delivery_province' },
+  { title: '城市', dataIndex: 'orders.delivery_city' },
+  { title: '性别', dataIndex: 'orders.gender' },
+  { title: '年龄', dataIndex: 'orders.age' },
+  { title: '是否会员', dataIndex: 'orders.is_member' },
+  { title: '下单月份', dataIndex: 'orders.order_month' }
 ]
 
 const userData = ref([])
-const userPagination = ref({ current: 1, pageSize: 10, total: 0 })
+const userPagination = ref({ current: 1, pageSize: 100, total: 0 })
 const userLoading = ref(false)
 
-const fetchUsers = async (page = 1, pageSize = 10) => {
+const fetchUsers = async (page = 1, pageSize = 100) => {
   userLoading.value = true
   try {
-    // const res = await axios.get('/api/dataset/users', {
-    //   params: { page, pageSize },
-    // })
-    // userData.value = res.data.data
-
-    // 👉 Mock 数据
-    const mockUsers = Array.from({ length: pageSize }, (_, i) => ({
-      user_id: `U${(page - 1) * pageSize + i + 1}`,
-      gender: i % 2 === 0 ? '男' : '女',
-      age: 20 + (i % 10),
-      is_member: i % 3 === 0 ? '是' : '否',
-      province: '浙江省',
-      city: `城市${i + 1}`
-    }))
-    userData.value = mockUsers
-    userPagination.value.total = 50 // 假设总共 50 条
+    const res = await getUsersUsingGet({ page: page, pageSize: pageSize })
+    if (res.data.code === 0) {
+      userData.value = res.data.data
+      userPagination.value.total = 10000
+    } else {
+      message.error(res.data.message || '获取用户数据失败')
+    }
   } catch (e) {
     message.error('获取用户数据失败')
   } finally {
@@ -90,54 +89,23 @@ const fetchUsers = async (page = 1, pageSize = 10) => {
   }
 }
 
-// const fetchUsers = async (page = 1, pageSize = 10) => {
-//   userLoading.value = true
-//   try {
-//     const res = await axios.get('/api/dataset/users', {
-//       params: { page, pageSize },
-//     })
-//     userData.value = res.data.data
-//     // 可以根据总数做更精准分页（需后端支持 total）
-//   } catch (e) {
-//     message.error('获取用户数据失败')
-//   } finally {
-//     userLoading.value = false
-//   }
-// }
-
 const handleUserPageChange = (pagination: any) => {
   userPagination.value = pagination
   fetchUsers(pagination.current, pagination.pageSize)
 }
 
-onMounted(() => {
-  fetchUsers()
-  fetchOrders()
-})
-
-// 订单数据
 const orderData = ref([])
 const orderLoading = ref(false)
 
 const fetchOrders = async () => {
   orderLoading.value = true
   try {
-    // const res = await axios.get('/api/dataset/orders')
-    // orderData.value = res.data.data
-
-    // 👉 Mock 数据（可删除后注释取消）
-    const mockOrders = Array.from({ length: 20 }, (_, i) => ({
-      order_id: `ORD1000${i + 1}`,
-      user_id: `U${i + 1}`,
-      product_name: `商品${i + 1}`,
-      unit_price: (100 + i * 10).toFixed(2),
-      quantity: (i % 5) + 1,
-      total_amount: ((100 + i * 10) * ((i % 5) + 1)).toFixed(2),
-      order_time: `2025-01-${String((i % 30) + 1).padStart(2, '0')}`,
-      delivery_province: '浙江省',
-      delivery_city: `城市${i + 1}`
-    }))
-    orderData.value = mockOrders
+    const res = await getOrderSampleUsingGet()
+    if (res.data.code === 0) {
+      orderData.value = res.data.data
+    } else {
+      message.error(res.message || '获取订单数据失败')
+    }
   } catch (e) {
     message.error('获取订单数据失败')
   } finally {
@@ -145,19 +113,10 @@ const fetchOrders = async () => {
   }
 }
 
-// const fetchOrders = async () => {
-//   orderLoading.value = true
-//   try {
-//     const res = await axios.get('/api/dataset/orders', {
-//       params: { month: selectedMonth.value },
-//     })
-//     orderData.value = res.data.data
-//   } catch (e) {
-//     message.error('获取订单数据失败')
-//   } finally {
-//     orderLoading.value = false
-//   }
-// }
+onMounted(() => {
+  fetchUsers()
+  fetchOrders()
+})
 </script>
 
 <style scoped>

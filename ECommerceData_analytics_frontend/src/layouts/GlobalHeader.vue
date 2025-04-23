@@ -4,7 +4,7 @@
       <a-col>
         <RouterLink to="/">
           <div class="title-bar">
-            <div class="title">阿迪达斯电商数据分析平台【模拟数据】</div>
+            <div class="title">阿迪达斯电商数据分析平台</div>
           </div>
         </RouterLink>
       </a-col>

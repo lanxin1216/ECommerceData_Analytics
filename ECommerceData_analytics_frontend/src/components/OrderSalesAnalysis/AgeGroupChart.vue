@@ -10,37 +10,59 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { mockAgeGroup } from '@/mock/salesAnalysisMock.ts'
+import { message } from 'ant-design-vue'
+import { getAgeGroupConsumptionUsingGet } from '@/api/orderSalesAnalysisController.ts'
 
 const chartRef = ref<HTMLDivElement | null>(null)
-let chart: echarts.ECharts
 const loading = ref(false)
 const isEmpty = ref(false)
-
-const fetchData = async () => {
-  loading.value = true
-  // const res = await getAgeGroupUsingGet()
-  const res = { data: mockAgeGroup }
-  if (res.data.xAxis?.length === 0) isEmpty.value = true
-  else renderChart(res.data)
-  loading.value = false
-}
+let chartInstance: echarts.ECharts | null = null
 
 const renderChart = (data: any) => {
-  chart.setOption({
+  if (!chartRef.value) return
+
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartRef.value)
+
+  chartInstance.setOption({
     tooltip: { trigger: 'axis' },
     xAxis: { type: 'category', data: data.xAxis },
     yAxis: { type: 'value' },
     series: data.series
   })
-  isEmpty.value = false
+
+  setTimeout(() => {
+    chartInstance?.resize()
+  }, 100)
+}
+
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const res = await getAgeGroupConsumptionUsingGet()
+    const data = res.data.data?.[0]
+    if (res.data.code === 0 && data && Array.isArray(data.xAxis) && data.xAxis.length > 0) {
+      isEmpty.value = false
+      await nextTick()
+      renderChart(data)
+    } else {
+      isEmpty.value = true
+      message.warning('暂无年龄段消费数据')
+    }
+  } catch (err) {
+    isEmpty.value = true
+    message.error('请求失败')
+    console.error('年龄段消费分析加载失败', err)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
-  if (chartRef.value) chart = echarts.init(chartRef.value)
   fetchData()
+  window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>
 

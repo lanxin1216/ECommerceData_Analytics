@@ -1,5 +1,5 @@
 <template>
-  <a-card title="热销商品类别排行（前十）">
+  <a-card title="热销商品类别">
     <div class="card-content">
       <a-spin :spinning="loading">
         <a-empty v-if="isEmpty && !loading" description="暂无数据" />
@@ -10,37 +10,61 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { mockHotCategory } from '@/mock/salesAnalysisMock.ts'
+import { message } from 'ant-design-vue'
+import { getHotCategoryRankingUsingGet } from '@/api/orderSalesAnalysisController.ts'
 
 const chartRef = ref<HTMLDivElement | null>(null)
-let chart: echarts.ECharts
 const loading = ref(false)
 const isEmpty = ref(false)
-
-const fetchData = async () => {
-  loading.value = true
-  // const res = await getHotCategoryUsingGet()
-  const res = { data: mockHotCategory }
-  if (res.data.xAxis?.length === 0) isEmpty.value = true
-  else renderChart(res.data)
-  loading.value = false
-}
+let chartInstance: echarts.ECharts | null = null
 
 const renderChart = (data: any) => {
-  chart.setOption({
+  if (!chartRef.value) return
+
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartRef.value)
+
+  chartInstance.setOption({
     tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: data.xAxis },
+    xAxis: {
+      type: 'category',
+      data: data.xAxis,
+      axisLabel: { rotate: 45 } // 防止类目过长遮挡
+    },
     yAxis: { type: 'value' },
     series: data.series
   })
-  isEmpty.value = false
+
+  setTimeout(() => chartInstance?.resize(), 100)
+}
+
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const res = await getHotCategoryRankingUsingGet()
+    const data = res.data.data?.[0]
+    if (res.data.code === 0 && data && data.xAxis?.length > 0) {
+      isEmpty.value = false
+      await nextTick()
+      renderChart(data)
+    } else {
+      isEmpty.value = true
+      message.warning('暂无热销商品类别数据')
+    }
+  } catch (err) {
+    isEmpty.value = true
+    message.error('加载失败，请稍后重试')
+    console.error('热销商品类别排行加载失败:', err)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
-  if (chartRef.value) chart = echarts.init(chartRef.value)
   fetchData()
+  window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>
 

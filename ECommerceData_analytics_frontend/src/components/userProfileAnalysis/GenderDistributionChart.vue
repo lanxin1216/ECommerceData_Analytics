@@ -10,36 +10,60 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import * as echarts from 'echarts'
-// import { getGenderDistribution } from '@/api/userBehaviorFeatureController'
-import { mockGenderData } from '@/mock/userBehaviorFeatureMock'
+import { getGenderDistributionUsingGet } from '@/api/userBehaviorFeatureAnalysisController.ts'
+import { message } from 'ant-design-vue'
 
 const chartRef = ref<HTMLDivElement | null>(null)
 const loading = ref(false)
 const isEmpty = ref(false)
+let chartInstance: echarts.ECharts | null = null
 
 const renderChart = (data: any[]) => {
-  const chart = echarts.init(chartRef.value!)
-  chart.setOption({
+  if (!chartRef.value) return
+
+  // 防止重复初始化
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+
+  chartInstance = echarts.init(chartRef.value)
+  chartInstance.setOption({
     tooltip: { trigger: 'item' },
     series: [
       {
         type: 'pie',
         radius: '60%',
-        data: data.map(item => ({ name: item.gender, value: item.count })),
+        data: data,
         label: { formatter: '{b}: {d}%' }
       }
     ]
   })
+  setTimeout(() => {
+    chartInstance?.resize()
+  }, 0)
 }
 
 const fetchData = async () => {
   loading.value = true
-  // const res = await getGenderDistribution()
-  // const data = res.data
-  const data = mockGenderData
-  isEmpty.value = data.length === 0
-  if (!isEmpty.value) renderChart(data)
-  loading.value = false
+  try {
+    const res = await getGenderDistributionUsingGet()
+    if (res.data.code === 0 && Array.isArray(res.data.data)) {
+      isEmpty.value = res.data.data.length === 0
+      if (!isEmpty.value) {
+        renderChart(res.data.data)
+      }
+    } else {
+      isEmpty.value = true
+      console.error('请求失败或返回数据格式不正确', res)
+      message.error(res.data.message || '请求失败或返回数据格式不正确')
+    }
+  } catch (error) {
+    isEmpty.value = true
+    message.error('请求异常')
+    console.error('请求异常', error)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(fetchData)

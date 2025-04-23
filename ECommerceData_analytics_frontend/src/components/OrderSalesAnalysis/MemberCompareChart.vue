@@ -10,38 +10,65 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { mockMemberCompare } from '@/mock/salesAnalysisMock.ts'
+import { message } from 'ant-design-vue'
+import { getMemberComparisonUsingGet } from '@/api/orderSalesAnalysisController.ts'
 
 const chartRef = ref<HTMLDivElement | null>(null)
-let chart: echarts.ECharts
 const loading = ref(false)
 const isEmpty = ref(false)
+let chartInstance: echarts.ECharts | null = null
+
+const renderChart = (data: any) => {
+  if (!chartRef.value) return
+  if (chartInstance) chartInstance.dispose()
+  chartInstance = echarts.init(chartRef.value)
+
+  chartInstance.setOption({
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
+    },
+    legend: { data: data.series.map((s: any) => s.name) },
+    xAxis: {
+      type: 'category',
+      data: data.xAxis
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: data.series
+  })
+
+  setTimeout(() => chartInstance?.resize(), 100)
+}
 
 const fetchData = async () => {
   loading.value = true
-  // const res = await getMemberCompareUsingGet()
-  const res = { data: mockMemberCompare }
-  if (res.data.xAxis?.length === 0) isEmpty.value = true
-  else renderChart(res.data)
-  loading.value = false
-}
-
-const renderChart = (data: any) => {
-  chart.setOption({
-    tooltip: { trigger: 'axis' },
-    legend: {},
-    xAxis: { type: 'category', data: data.xAxis },
-    yAxis: { type: 'value' },
-    series: data.series
-  })
-  isEmpty.value = false
+  try {
+    const res = await getMemberComparisonUsingGet()
+    const data = res.data.data?.[0]
+    if (res.data.code === 0 && data && data.xAxis?.length > 0) {
+      isEmpty.value = false
+      await nextTick()
+      renderChart(data)
+    } else {
+      isEmpty.value = true
+      message.warning('暂无会员对比数据')
+    }
+  } catch (err) {
+    isEmpty.value = true
+    message.error('加载失败，请稍后重试')
+    console.error('会员与非会员对比加载失败:', err)
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
-  if (chartRef.value) chart = echarts.init(chartRef.value)
   fetchData()
+  window.addEventListener('resize', () => chartInstance?.resize())
 })
 </script>
 
